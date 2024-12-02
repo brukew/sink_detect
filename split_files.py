@@ -45,8 +45,6 @@ def is_image_valid(image_path):
 
 def process_and_split_images():
     """Process images: rotate, resize, and split them into train/val/test."""
-    from sklearn.model_selection import train_test_split
-
     for cls in classes:
         class_path = os.path.join(base_dir, cls)
         all_images = []
