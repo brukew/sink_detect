@@ -1,8 +1,17 @@
 File Structure:
-
+```
 tinyML/
 ├── sink_data/
 │   ├── dirty_sink/
-│   │   ├── [files and subdirectories related to dirty sinks]
+│   │   ├── dirty_sink_vid_1
+│   │   │  ├── frame1.jpg
+│   │   ├── dirty_sink_vid_2
+│   │   │  ├── frame21.jpg
+│   │   ├── img1.jpg
 │   ├── clean_sink/
-│       ├── [files and subdirectories related to clean sinks]
+│   │   ├── clean_sink_vid_1
+│   │   │  ├── frame1.jpg
+│   │   ├── clean_sink_vid_2
+│   │   │  ├── frame21.jpg
+│   │   ├── img1.jpg
+```
