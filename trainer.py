@@ -5,7 +5,8 @@ import random
 import time
 import os
 from PIL import Image, ImageTk
-from os.path import isfile, join
+from os.path import isfile
+import tqdm
 
 WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
@@ -18,13 +19,16 @@ IMAGE_LIST = []
 UART_COMMAND_LIST = []
 INDEX = 0
 CURRENT_IMAGE = None
+PBAR = None
+DEBUG = False
 
 def serial_init():
     # UART setup
     global SER
     try:
         SER = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-        print(f"Connected to {SERIAL_PORT} at {BAUD_RATE} baud.")
+        if DEBUG:
+            print(f"Connected to {SERIAL_PORT} at {BAUD_RATE} baud.")
     except Exception as e:
         print(f"Error connecting to serial port: {e}")
         exit()
@@ -39,7 +43,8 @@ def send_command(command):
     global SER
     try:
         SER.write(command.encode())
-        print(f"Sent: {command}")
+        if DEBUG:
+            print(f"Sent: {command}")
     except Exception as e:
         print(f"Error sending command: {e}")
 
@@ -67,9 +72,25 @@ def load_images(balance=True):
         else:
             clean_sink_list *= math.ceil(len(dirty_sink_list)/len(clean_sink_list))
             clean_sink_list = clean_sink_list[:len(dirty_sink_list)]
-    print(f"{len(clean_sink_list)} clean sink images, {len(dirty_sink_list)} dirty sink images")
-    IMAGE_LIST.extend(clean_sink_list + dirty_sink_list)
-    random.shuffle(IMAGE_LIST)
+    if DEBUG:
+        print(f"{len(clean_sink_list)} clean sink images, {len(dirty_sink_list)} dirty sink images")
+    if (balance):
+        # shuffle both
+        random.shuffle(clean_sink_list)
+        random.shuffle(dirty_sink_list)
+
+        # force alternation
+        counter = 0
+        for i in range(len(clean_sink_list)*2):
+            if i % 2:
+                IMAGE_LIST.append(clean_sink_list[counter])
+            else:
+                IMAGE_LIST.append(dirty_sink_list[counter])
+            counter += i % 2
+    else:
+        # simple shuffle
+        IMAGE_LIST.extend(clean_sink_list + dirty_sink_list)
+        random.shuffle(IMAGE_LIST)
     for img in IMAGE_LIST:
         if img in clean_sink_list:
             UART_COMMAND_LIST.append("1")
@@ -81,8 +102,11 @@ def send_uart():
     """Sends UART command associated with current image"""
     global INDEX
     send_command(UART_COMMAND_LIST[INDEX])
-    print(f"Sent UART {UART_COMMAND_LIST[INDEX]} associated with {IMAGE_LIST[INDEX]}")
+    if DEBUG:
+        print(f"Sent UART {UART_COMMAND_LIST[INDEX]} associated with {IMAGE_LIST[INDEX]}")
     INDEX += 1
+    PBAR.update(INDEX)
+    PBAR.refresh()
     WINDOW.after(int(float(D2)*1000), upload_image)
 
 def upload_image(resize=True, scaleFactor=2):
@@ -102,7 +126,8 @@ def upload_image(resize=True, scaleFactor=2):
     bg_image = tk.Label(WINDOW, image=img)
     bg_image.place(x=0, y=0, relwidth=1, relheight=1)
     bg_image.configure(background="black")
-    print(f"Uploaded {IMAGE_LIST[INDEX]}")
+    if DEBUG:
+        print(f"Uploaded {IMAGE_LIST[INDEX]}")
     canvas.pack()
     WINDOW.after(int(float(D1)*1000), send_uart)
 
@@ -116,6 +141,10 @@ def cycle_images():
     upload_image()
 
 def tkinter_init():
+    """Set up tkinter window and progress bar"""
+    global PBAR
+
+    PBAR = tqdm.tqdm(range(len(IMAGE_LIST)))
     WINDOW.title("Trainer")
     WINDOW.attributes("-fullscreen", True)
     tk.Label(WINDOW, text="Pre UART Command Delay (s)").grid(row=0)
