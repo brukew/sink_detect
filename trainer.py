@@ -10,7 +10,7 @@ from os.path import isfile, join
 WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
 DELAY_2 = tk.Entry(WINDOW)
-IMAGE_DIR = "."
+IMAGE_DIR = "./sink_data"
 SERIAL_PORT = '/dev/tty.usbmodem1103'  # Replace with your specific port
 BAUD_RATE = 115200
 SER = None
