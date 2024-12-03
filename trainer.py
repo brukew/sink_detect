@@ -88,17 +88,18 @@ def send_uart():
     INDEX += 1
     WINDOW.after(int(float(D2)*1000), upload_image)
 
-def upload_image(resize=True):
+def upload_image(resize=True, scaleFactor=2):
     """Uploads image to trainer, increments index"""
     global CURRENT_IMAGE
     canvas = tk.Canvas(WINDOW, width=WINDOW.winfo_width(), height=WINDOW.winfo_height())
     temp = Image.open(IMAGE_LIST[INDEX])
     if resize:
-        temp = temp.resize((WINDOW.winfo_width(), WINDOW.winfo_height()), Image.LANCZOS)
+        temp = temp.resize((WINDOW.winfo_width()//scaleFactor, WINDOW.winfo_height()//scaleFactor), Image.LANCZOS)
     img = ImageTk.PhotoImage(temp)
     CURRENT_IMAGE = img
     bg_image = tk.Label(WINDOW, image=img)
     bg_image.place(x=0, y=0, relwidth=1, relheight=1)
+    bg_image.configure(background="black")
     print(f"Uploaded {IMAGE_LIST[INDEX]}")
     canvas.pack()
     WINDOW.after(int(float(D1)*1000), send_uart)
