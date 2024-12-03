@@ -81,9 +81,12 @@ def send_uart():
     """Sends UART command associated with current image"""
     global INDEX
     # send_command(UART_COMMAND_LIST[INDEX])
+    if (INDEX == len(IMAGE_LIST)):
+        print("Trainig Complete")
+        exit()
     print(f"Sent UART {UART_COMMAND_LIST[INDEX]} associated with {IMAGE_LIST[INDEX]}")
-    INDEX = (INDEX + 1) % len(IMAGE_LIST)
-    WINDOW.after(int(D2)*1000, upload_image)
+    INDEX += 1
+    WINDOW.after(int(float(D2)*1000), upload_image)
 
 def upload_image(resize=True):
     """Uploads image to trainer, increments index"""
@@ -98,7 +101,7 @@ def upload_image(resize=True):
     bg_image.place(x=0, y=0, relwidth=1, relheight=1)
     print(f"Uploaded {IMAGE_LIST[INDEX]}")
     canvas.pack()
-    WINDOW.after(int(D1)*1000, send_uart)
+    WINDOW.after(int(float(D1)*1000), send_uart)
 
 
 def cycle_images():
@@ -122,5 +125,7 @@ def tkinter_init():
     WINDOW.mainloop()
 
 if __name__ == "__main__":
+    #serial_init()
+    # send_command("3")  # Enter training mode
     load_images()
     tkinter_init()
