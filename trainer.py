@@ -12,7 +12,7 @@ WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
 DELAY_2 = tk.Entry(WINDOW)
 IMAGE_DIR = "./sink_data"
-SERIAL_PORT = '/dev/tty.usbmodem1103'  # Replace with your specific port
+SERIAL_PORT = '/dev/tty.usbmodem103'  # Replace with your specific port
 BAUD_RATE = 115200
 SER = None
 IMAGE_LIST = []
@@ -105,7 +105,7 @@ def send_uart():
     if DEBUG:
         print(f"Sent UART {UART_COMMAND_LIST[INDEX]} associated with {IMAGE_LIST[INDEX]}")
     INDEX += 1
-    PBAR.update(INDEX)
+    PBAR.update(1)
     PBAR.refresh()
     WINDOW.after(int(float(D2)*1000), upload_image)
 
@@ -120,12 +120,12 @@ def upload_image(resize=True, scaleFactor=2):
     canvas = tk.Canvas(WINDOW, width=WINDOW.winfo_width(), height=WINDOW.winfo_height())
     temp = Image.open(IMAGE_LIST[INDEX])
     if resize:
-        temp = temp.resize((WINDOW.winfo_width()//scaleFactor, WINDOW.winfo_height()//scaleFactor), Image.LANCZOS)
+        temp = temp.resize((int(WINDOW.winfo_width()/scaleFactor), int(WINDOW.winfo_height()/scaleFactor)), Image.LANCZOS)
     img = ImageTk.PhotoImage(temp)
     CURRENT_IMAGE = img
     bg_image = tk.Label(WINDOW, image=img)
     bg_image.place(x=0, y=0, relwidth=1, relheight=1)
-    bg_image.configure(background="black")
+    bg_image.configure(background="white")
     if DEBUG:
         print(f"Uploaded {IMAGE_LIST[INDEX]}")
     canvas.pack()
@@ -157,7 +157,7 @@ def tkinter_init():
     WINDOW.mainloop()
 
 if __name__ == "__main__":
-    # serial_init()
-    # send_command("3")  # Enter training mode
+    serial_init()
+    send_command("3")  # Enter training mode
     load_images()
     tkinter_init()
