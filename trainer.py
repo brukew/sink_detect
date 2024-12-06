@@ -7,12 +7,13 @@ import os
 from PIL import Image, ImageTk
 from os.path import isfile
 import tqdm
+import csv
 
 WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
 DELAY_2 = tk.Entry(WINDOW)
 IMAGE_DIR = "./sink_data"
-SERIAL_PORT = '/dev/tty.usbmodem103'  # Replace with your specific port
+SERIAL_PORT = '/dev/tty.usbmodem1103'  # Replace with your specific port
 BAUD_RATE = 115200
 SER = None
 IMAGE_LIST = []
@@ -21,6 +22,12 @@ INDEX = 0
 CURRENT_IMAGE = None
 PBAR = None
 DEBUG = False
+CSV_FILE = 'train_data.csv'
+
+def csv_init():
+    with open(CSV_FILE, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['img_file', 'cls', 'correct'])
 
 def serial_init():
     # UART setup
@@ -47,6 +54,16 @@ def send_command(command):
             print(f"Sent: {command}")
     except Exception as e:
         print(f"Error sending command: {e}")
+
+def read_answer():
+    global SER
+    try:
+        answer = SER.read(1)
+        if DEBUG:
+            print(f"Recieved: {answer[-1]}")
+        return answer
+    except Exception as e:
+        print(f"Error reading answer: {e}")
 
 def load_dir(path, list):
     """Load images in path including nested directories"""
@@ -80,13 +97,15 @@ def load_images(balance=True):
         random.shuffle(dirty_sink_list)
 
         # force alternation
-        counter = 0
-        for i in range(len(clean_sink_list)*2):
-            if i % 2:
-                IMAGE_LIST.append(clean_sink_list[counter])
+        counter1 = 0
+        counter2 = 0
+        for i in range(len(clean_sink_list)):
+            if not i % 3:
+                IMAGE_LIST.append(clean_sink_list[counter1])
+                counter1 = (counter1 + 1) % len(clean_sink_list)
             else:
-                IMAGE_LIST.append(dirty_sink_list[counter])
-            counter += i % 2
+                IMAGE_LIST.append(dirty_sink_list[counter2])
+                counter2 = (counter2 + 1) % len(dirty_sink_list)
     else:
         # simple shuffle
         IMAGE_LIST.extend(clean_sink_list + dirty_sink_list)
@@ -104,6 +123,12 @@ def send_uart():
     send_command(UART_COMMAND_LIST[INDEX])
     if DEBUG:
         print(f"Sent UART {UART_COMMAND_LIST[INDEX]} associated with {IMAGE_LIST[INDEX]}")
+    answer = int(read_answer()[-1])
+    with open(CSV_FILE, 'a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([IMAGE_LIST[INDEX], UART_COMMAND_LIST[INDEX], answer==1])
+    if DEBUG:
+        print(f"Predicted {'correct' if answer==1 else 'incorrect'}, ")
     INDEX += 1
     PBAR.update(1)
     PBAR.refresh()
@@ -114,7 +139,7 @@ def upload_image(resize=True, scaleFactor=2):
     global CURRENT_IMAGE
 
     if (INDEX == len(IMAGE_LIST)):
-        print("Trainig Complete")
+        print("Training Complete")
         exit()
 
     canvas = tk.Canvas(WINDOW, width=WINDOW.winfo_width(), height=WINDOW.winfo_height())
@@ -157,6 +182,7 @@ def tkinter_init():
     WINDOW.mainloop()
 
 if __name__ == "__main__":
+    csv_init()
     serial_init()
     send_command("3")  # Enter training mode
     load_images()
