@@ -22,10 +22,15 @@ INDEX = 0
 CURRENT_IMAGE = None
 PBAR = None
 DEBUG = False
-CSV_FILE = 'train_data.csv'
+TRAIN_CSV_FILE = 'train_data.csv'
+VAL_CSV_FILE = 'val_data.csv'
+TRAIN = True
 
 def csv_init():
-    with open(CSV_FILE, 'w', newline='') as file:
+    with open(TRAIN_CSV_FILE, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['img_file', 'cls', 'correct'])
+    with open(VAL_CSV_FILE, 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['img_file', 'cls', 'correct'])
 
@@ -69,6 +74,9 @@ def load_dir(path, list):
     """Load images in path including nested directories"""
 
     for f in os.listdir(f"{IMAGE_DIR}/{path}"):
+        if f.startswith('.'):
+            continue
+
         if isfile(f"{IMAGE_DIR}/{path}/{f}"):
             list.append(f"{IMAGE_DIR}/{path}/{f}")
         else:
@@ -117,14 +125,14 @@ def load_images(balance=True):
             UART_COMMAND_LIST.append("2")
 
 
-def send_uart():
+def train_uart():
     """Sends UART command associated with current image"""
     global INDEX
     send_command(UART_COMMAND_LIST[INDEX])
     if DEBUG:
         print(f"Sent UART {UART_COMMAND_LIST[INDEX]} associated with {IMAGE_LIST[INDEX]}")
     answer = int(read_answer()[-1])
-    with open(CSV_FILE, 'a', newline='') as file:
+    with open(TRAIN_CSV_FILE, 'a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([IMAGE_LIST[INDEX], UART_COMMAND_LIST[INDEX], answer==1])
     if DEBUG:
@@ -134,13 +142,38 @@ def send_uart():
     PBAR.refresh()
     WINDOW.after(int(float(D2)*1000), upload_image)
 
+def val_uart():
+    """Sends UART command associated with current image"""
+    global INDEX
+    send_command('2')
+    answer = int(read_answer()[-1])
+    with open(VAL_CSV_FILE, 'a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([IMAGE_LIST[INDEX], UART_COMMAND_LIST[INDEX], answer])
+    if DEBUG:
+        print(f"Predicted {'correct' if answer==1 else 'incorrect'}, ")
+    INDEX += 1
+    PBAR.update(1)
+    PBAR.refresh()
+    WINDOW.after(int(float(D2)*1000), upload_image)
+
 def upload_image(resize=True, scaleFactor=2):
     """Uploads image to trainer, increments index"""
-    global CURRENT_IMAGE
+    global INDEX, IMAGE_LIST, UART_COMMAND_LIST, TRAIN, CURRENT_IMAGE
 
     if (INDEX == len(IMAGE_LIST)):
-        print("Training Complete")
-        exit()
+        if TRAIN:
+            print("Training Complete")
+            TRAIN = False
+            INDEX = 0
+            IMAGE_LIST = VAL_IMAGE_LIST
+            UART_COMMAND_LIST = VAL_UART_COMMAND_LIST
+            send_command("4")  # Switch device to inference mode
+            time.sleep(0.2)
+            send_command("1")  # Switch device to validation mode
+        else:
+            print("Validation Complete")
+            WINDOW.quit()
 
     canvas = tk.Canvas(WINDOW, width=WINDOW.winfo_width(), height=WINDOW.winfo_height())
     temp = Image.open(IMAGE_LIST[INDEX])
@@ -154,7 +187,7 @@ def upload_image(resize=True, scaleFactor=2):
     if DEBUG:
         print(f"Uploaded {IMAGE_LIST[INDEX]}")
     canvas.pack()
-    WINDOW.after(int(float(D1)*1000), send_uart)
+    WINDOW.after(int(float(D1)*1000), train_uart if TRAIN else val_uart)
 
 
 def cycle_images():
@@ -181,9 +214,74 @@ def tkinter_init():
     tk.Button(WINDOW, text="Start", command=cycle_images).grid(row=2)
     WINDOW.mainloop()
 
+import random
+
+SEED = 42  # Specific random seed for reproducibility
+TRAIN_SPLIT = 0.8  # 80% training, 20% validation
+TRAIN_IMAGE_LIST = []
+VAL_IMAGE_LIST = []
+TRAIN_UART_COMMAND_LIST = []
+VAL_UART_COMMAND_LIST = []
+
+def split_dataset():
+    """Split the dataset into training and validation sets."""
+    global IMAGE_LIST, UART_COMMAND_LIST
+    global TRAIN_IMAGE_LIST, VAL_IMAGE_LIST
+    global TRAIN_UART_COMMAND_LIST, VAL_UART_COMMAND_LIST
+
+    clean_sink_list = []
+    dirty_sink_list = []
+    load_dir("clean_sink", clean_sink_list)
+    load_dir("dirty_sink", dirty_sink_list)
+
+    # Balance datasets
+    if len(clean_sink_list) > len(dirty_sink_list):
+        dirty_sink_list *= math.ceil(len(clean_sink_list) / len(dirty_sink_list))
+        dirty_sink_list = dirty_sink_list[:len(clean_sink_list)]
+    else:
+        clean_sink_list *= math.ceil(len(dirty_sink_list) / len(clean_sink_list))
+        clean_sink_list = clean_sink_list[:len(dirty_sink_list)]
+
+    # Shuffle with seed
+    random.seed(SEED)
+    random.shuffle(clean_sink_list)
+    random.shuffle(dirty_sink_list)
+
+    # Split datasets into training and validation sets
+    clean_train_count = int(TRAIN_SPLIT * len(clean_sink_list))
+    dirty_train_count = int(TRAIN_SPLIT * len(dirty_sink_list))
+
+    clean_train = clean_sink_list[:clean_train_count]
+    clean_val = clean_sink_list[clean_train_count:]
+    dirty_train = dirty_sink_list[:dirty_train_count]
+    dirty_val = dirty_sink_list[dirty_train_count:]
+
+    # Combine datasets while maintaining the pattern
+    def combine_with_pattern(clean, dirty):
+        combined_list = []
+        commands = []
+        counter1, counter2 = 0, 0
+        for i in range(len(clean)):
+            if not i % 3:
+                combined_list.append(clean[counter1])
+                commands.append("1")  # Command for clean sink
+                counter1 += 1
+            else:
+                combined_list.append(dirty[counter2])
+                commands.append("2")  # Command for dirty sink
+                counter2 += 1
+        return combined_list, commands
+
+    # Training and validation sets
+    TRAIN_IMAGE_LIST, TRAIN_UART_COMMAND_LIST = combine_with_pattern(clean_train, dirty_train)
+    VAL_IMAGE_LIST, VAL_UART_COMMAND_LIST = combine_with_pattern(clean_val, dirty_val)
+
+# Update main block to include split and validation
 if __name__ == "__main__":
     csv_init()
     serial_init()
     send_command("3")  # Enter training mode
-    load_images()
-    tkinter_init()
+    split_dataset()  # Split dataset into training and validation
+    IMAGE_LIST = TRAIN_IMAGE_LIST  # Use training images for training phase
+    UART_COMMAND_LIST = TRAIN_UART_COMMAND_LIST
+    tkinter_init()  # Begin training/validation
