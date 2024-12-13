@@ -12,7 +12,7 @@ import csv
 WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
 DELAY_2 = tk.Entry(WINDOW)
-IMAGE_DIR = "./data_split"
+IMAGE_DIR = "./sink_data"
 SERIAL_PORT = '/dev/tty.usbmodem1103'  # Replace with your specific port
 BAUD_RATE = 115200
 SER = None
