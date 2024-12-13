@@ -12,7 +12,7 @@ import csv
 WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
 DELAY_2 = tk.Entry(WINDOW)
-IMAGE_DIR = "./sink_data"
+IMAGE_DIR = "./data_split"
 SERIAL_PORT = '/dev/tty.usbmodem1103'  # Replace with your specific port
 BAUD_RATE = 115200
 SER = None
@@ -22,8 +22,9 @@ INDEX = 0
 CURRENT_IMAGE = None
 PBAR = None
 DEBUG = False
-TRAIN_CSV_FILE = 'train_data.csv'
-VAL_CSV_FILE = 'val_data.csv'
+file_num = 'final_ep_3'
+TRAIN_CSV_FILE = f"train_data_{file_num}.csv"
+VAL_CSV_FILE = f"val_data_{file_num}.csv"
 TRAIN = True
 
 def csv_init():
@@ -82,49 +83,6 @@ def load_dir(path, list):
         else:
             load_dir(f"{path}/{f}", list)
 
-def load_images(balance=True):
-    """Load images and shuffle"""
-    global IMAGE_LIST, UART_COMMAND_LIST
-
-    clean_sink_list = []
-    dirty_sink_list = []
-    load_dir("clean_sink", clean_sink_list)
-    load_dir("dirty_sink", dirty_sink_list)
-    if (balance):
-        if len(clean_sink_list) > len(dirty_sink_list):
-            dirty_sink_list *= math.ceil(len(clean_sink_list)/len(dirty_sink_list))
-            dirty_sink_list = dirty_sink_list[:len(clean_sink_list)]
-        else:
-            clean_sink_list *= math.ceil(len(dirty_sink_list)/len(clean_sink_list))
-            clean_sink_list = clean_sink_list[:len(dirty_sink_list)]
-    if DEBUG:
-        print(f"{len(clean_sink_list)} clean sink images, {len(dirty_sink_list)} dirty sink images")
-    if (balance):
-        # shuffle both
-        random.shuffle(clean_sink_list)
-        random.shuffle(dirty_sink_list)
-
-        # force alternation
-        counter1 = 0
-        counter2 = 0
-        for i in range(len(clean_sink_list)):
-            if not i % 3:
-                IMAGE_LIST.append(clean_sink_list[counter1])
-                counter1 = (counter1 + 1) % len(clean_sink_list)
-            else:
-                IMAGE_LIST.append(dirty_sink_list[counter2])
-                counter2 = (counter2 + 1) % len(dirty_sink_list)
-    else:
-        # simple shuffle
-        IMAGE_LIST.extend(clean_sink_list + dirty_sink_list)
-        random.shuffle(IMAGE_LIST)
-    for img in IMAGE_LIST:
-        if img in clean_sink_list:
-            UART_COMMAND_LIST.append("1")
-        else:
-            UART_COMMAND_LIST.append("2")
-
-
 def train_uart():
     """Sends UART command associated with current image"""
     global INDEX
@@ -173,7 +131,7 @@ def upload_image(resize=True, scaleFactor=2):
             send_command("1")  # Switch device to validation mode
         else:
             print("Validation Complete")
-            WINDOW.quit()
+            quit()
 
     canvas = tk.Canvas(WINDOW, width=WINDOW.winfo_width(), height=WINDOW.winfo_height())
     temp = Image.open(IMAGE_LIST[INDEX])
@@ -217,7 +175,6 @@ def tkinter_init():
 import random
 
 SEED = 42  # Specific random seed for reproducibility
-TRAIN_SPLIT = 0.8  # 80% training, 20% validation
 TRAIN_IMAGE_LIST = []
 VAL_IMAGE_LIST = []
 TRAIN_UART_COMMAND_LIST = []
@@ -229,55 +186,63 @@ def split_dataset():
     global TRAIN_IMAGE_LIST, VAL_IMAGE_LIST
     global TRAIN_UART_COMMAND_LIST, VAL_UART_COMMAND_LIST
 
-    clean_sink_list = []
-    dirty_sink_list = []
-    load_dir("clean_sink", clean_sink_list)
-    load_dir("dirty_sink", dirty_sink_list)
+    train_clean_sink_list = []
+    train_dirty_sink_list = []
+    load_dir("train/clean_sink", train_clean_sink_list)
+    load_dir("train/dirty_sink", train_dirty_sink_list)
 
+    val_clean_sink_list = []
+    val_dirty_sink_list = []
+    load_dir("val/clean_sink", val_clean_sink_list)
+    load_dir("val/dirty_sink", val_dirty_sink_list)
+    
     # Balance datasets
-    if len(clean_sink_list) > len(dirty_sink_list):
-        dirty_sink_list *= math.ceil(len(clean_sink_list) / len(dirty_sink_list))
-        dirty_sink_list = dirty_sink_list[:len(clean_sink_list)]
+    if len(train_clean_sink_list) > len(train_dirty_sink_list):
+        train_dirty_sink_list *= math.ceil(len(train_clean_sink_list) / len(train_dirty_sink_list))
+        train_dirty_sink_list = train_dirty_sink_list[:len(train_clean_sink_list)]
     else:
-        clean_sink_list *= math.ceil(len(dirty_sink_list) / len(clean_sink_list))
-        clean_sink_list = clean_sink_list[:len(dirty_sink_list)]
+        train_clean_sink_list *= math.ceil(len(train_dirty_sink_list) / len(train_clean_sink_list))
+        train_clean_sink_list = train_clean_sink_list[:len(train_dirty_sink_list)]
 
     # Shuffle with seed
     random.seed(SEED)
-    random.shuffle(clean_sink_list)
-    random.shuffle(dirty_sink_list)
+    random.shuffle(train_clean_sink_list)
+    random.shuffle(train_dirty_sink_list)
 
-    # Split datasets into training and validation sets
-    clean_train_count = int(TRAIN_SPLIT * len(clean_sink_list))
-    dirty_train_count = int(TRAIN_SPLIT * len(dirty_sink_list))
+    random.shuffle(val_clean_sink_list)
+    random.shuffle(val_dirty_sink_list)
 
-    clean_train = clean_sink_list[:clean_train_count]
-    clean_val = clean_sink_list[clean_train_count:]
-    dirty_train = dirty_sink_list[:dirty_train_count]
-    dirty_val = dirty_sink_list[dirty_train_count:]
+    clean_train = train_clean_sink_list
+    dirty_train = train_dirty_sink_list
+
+    clean_val = val_clean_sink_list
+    dirty_val = val_dirty_sink_list
 
     # Combine datasets while maintaining the pattern
-    def combine_with_pattern(clean, dirty):
+    def combine_with_pattern(clean, dirty, pattern):
         combined_list = []
         commands = []
         counter1, counter2 = 0, 0
-        for i in range(len(clean)):
-            if not i % 3:
+        mult = 1 if pattern == 1 else pattern/(pattern-1)
+        for i in range(int(len(clean)*mult)):
+            if i % pattern == 0 and counter1 < len(clean):
                 combined_list.append(clean[counter1])
                 commands.append("1")  # Command for clean sink
                 counter1 += 1
-            else:
+            elif counter2 < len(dirty):
                 combined_list.append(dirty[counter2])
                 commands.append("2")  # Command for dirty sink
                 counter2 += 1
+
         return combined_list, commands
 
     # Training and validation sets
-    TRAIN_IMAGE_LIST, TRAIN_UART_COMMAND_LIST = combine_with_pattern(clean_train, dirty_train)
-    VAL_IMAGE_LIST, VAL_UART_COMMAND_LIST = combine_with_pattern(clean_val, dirty_val)
+    TRAIN_IMAGE_LIST, TRAIN_UART_COMMAND_LIST = combine_with_pattern(clean_train, dirty_train, 2)
+    VAL_IMAGE_LIST, VAL_UART_COMMAND_LIST = combine_with_pattern(clean_val, dirty_val, 2)
 
 # Update main block to include split and validation
 if __name__ == "__main__":
+    input(f"This will wipe {TRAIN_CSV_FILE} and {VAL_CSV_FILE}, are you sure to continue?")
     csv_init()
     serial_init()
     send_command("3")  # Enter training mode
