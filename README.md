@@ -17,7 +17,7 @@ training schedule must be >1, with 2 performing an alternating training scheme, 
 Sink Data Folder Structure:
 ```
 sink_data/
-├── train/
+├── test/
 │   ├── clean_sink
 │   │  ├── img1.JPG
 │   ├── dirty_sink
