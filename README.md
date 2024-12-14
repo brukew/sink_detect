@@ -3,6 +3,9 @@ This is TinySinkDetect 🍽️🚀! A system to train your tinyengine model to c
 
 Using the system is simple! 
 
+## Demo Video
+[DEMO](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ3d6N3o5eTJsc3Nha3dtNXN3aG04M2ZtYXVkMWVoYmR5OTE0YWRkZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/1MEke7rfFxaJEY25tv/giphy.gif)
+
 ## Instructions
 
 1. Refer to [tinyengine demo](https://github.com/mit-han-lab/tinyengine/tree/main/tutorial/training) for instructions on model setup.
@@ -16,6 +19,3 @@ Using the system is simple!
 train_{csv_file_name}.csv and val_{csv_file_name}.csv will be files with img_file, cls (1 is clean, 2 is dirty), correct (True or False)
 
 training schedule must be >1, with 2 performing an alternating training scheme, 3 performing a 2:1 training scheme (dirty to clean), and so forth. 
-
-## Demo Video
-See demo.MOV for a demo.
