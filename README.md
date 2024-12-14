@@ -1,6 +1,9 @@
+# TinySinkDetect
 This is TinySinkDetect 🍽️🚀! A system to train your tinyengine model to classify dirty sinks from clean sinks. See more information about TinySinkDetect here. 
 
-Using the system is simple! Follow these steps:
+Using the system is simple! 
+
+## Instructions
 
 1. Refer to [tinyengine demo](https://github.com/mit-han-lab/tinyengine/tree/main/tutorial/training) for instructions on model setup.
 
@@ -14,22 +17,5 @@ train_{csv_file_name}.csv and val_{csv_file_name}.csv will be files with img_fil
 
 training schedule must be >1, with 2 performing an alternating training scheme, 3 performing a 2:1 training scheme (dirty to clean), and so forth. 
 
-Sink Data Folder Structure:
-```
-sink_data/
-├── test/
-│   ├── clean_sink
-│   │  ├── img1.JPG
-│   ├── dirty_sink
-│   │  ├── img1.JPG
-├── train/
-│   ├── clean_sink
-│   │  ├── img1.JPG
-│   ├── dirty_sink
-│   │  ├── img1.JPG
-├── val/
-│   ├── clean_sink
-│   │  ├── img1.JPG
-│   ├── dirty_sink
-│   │  ├── img1.JPG
-```
+## Demo Video
+See demo.MOV for a demo.
