@@ -8,7 +8,9 @@ from PIL import Image, ImageTk
 from os.path import isfile
 import tqdm
 import csv
+import sys
 
+TRAIN = sys.argv[1] == "True"
 WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
 DELAY_2 = tk.Entry(WINDOW)
@@ -22,9 +24,10 @@ INDEX = 0
 CURRENT_IMAGE = None
 PBAR = None
 DEBUG = False
-file_num = 'final_ep_3'
-TRAIN_CSV_FILE = f"train_data_{file_num}.csv"
-VAL_CSV_FILE = f"val_data_{file_num}.csv"
+file_num = sys.argv[1]
+train_schedule = sys.argv[2] 
+TRAIN_CSV_FILE = f"train_{file_num}.csv"
+VAL_CSV_FILE = f"val_{file_num}.csv"
 TRAIN = True
 
 def csv_init():
@@ -107,9 +110,9 @@ def val_uart():
     answer = int(read_answer()[-1])
     with open(VAL_CSV_FILE, 'a', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([IMAGE_LIST[INDEX], UART_COMMAND_LIST[INDEX], answer])
+        writer.writerow([IMAGE_LIST[INDEX], UART_COMMAND_LIST[INDEX], answer==UART_COMMAND_LIST[INDEX] or (answer==2 and UART_COMMAND_LIST[INDEX]==0)])
     if DEBUG:
-        print(f"Predicted {'correct' if answer==1 else 'incorrect'}, ")
+        print(f"Predicted {answer} ")
     INDEX += 1
     PBAR.update(1)
     PBAR.refresh()
@@ -237,7 +240,7 @@ def split_dataset():
         return combined_list, commands
 
     # Training and validation sets
-    TRAIN_IMAGE_LIST, TRAIN_UART_COMMAND_LIST = combine_with_pattern(clean_train, dirty_train, 2)
+    TRAIN_IMAGE_LIST, TRAIN_UART_COMMAND_LIST = combine_with_pattern(clean_train, dirty_train, train_schedule)
     VAL_IMAGE_LIST, VAL_UART_COMMAND_LIST = combine_with_pattern(clean_val, dirty_val, 2)
 
 # Update main block to include split and validation
