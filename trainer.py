@@ -10,7 +10,6 @@ import tqdm
 import csv
 import sys
 
-TRAIN = sys.argv[1] == "True"
 WINDOW = tk.Tk()
 DELAY_1 = tk.Entry(WINDOW)
 DELAY_2 = tk.Entry(WINDOW)
