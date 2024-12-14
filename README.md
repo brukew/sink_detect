@@ -6,7 +6,7 @@ Using the system is simple! Follow these steps:
 
 2. Switch the run target in STM32CubeIDE to sink_detect/binaries/sink_detect_mcunet.elf by going to Run -> Run Configurations (Expand Screen)-> STM32 C/C++ Application -> TTE_demo_mcunet Debug -> Browse -> Navigate to sink_detect/binaries/sink_detect_mcunet.elf and select -> Run
 
-3. Run trainer.py with arguments as follows
+3. Run trainer.py with arguments as follows and ensure that the sink images are centered on the camera.
 
 `trainer.py {csv_file_name} {training_schedule}`
 
